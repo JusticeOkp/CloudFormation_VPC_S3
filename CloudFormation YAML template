@@ -1,0 +1,94 @@
+User
+Resources:
+  TestVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: TestVPC
+
+  TestS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my-s3-bucket
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Name
+          Value: TestS3Bucket
+
+  TestCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: arn:aws:iam::692167434250:role/service-role/AWSCodePipelineServiceRole-us-east-1-Git2Bucket
+      Stages:
+        - Name: SourceAction
+  ActionTypeId:
+    Category: Source
+    Owner: ThirdParty
+    Provider: GitHub
+    Version: 1
+  OutputArtifacts:
+    - Name: SourceArtifact
+  Configuration:
+    Owner: JusticeOkp
+    Repo: CloudFormation_VPC_S3
+    Branch: master
+    Username: *******
+    Password: *******
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: GitHub
+                Version: 1
+              InputArtifacts:
+                - Name: SourceArtifact
+              OutputArtifacts:
+                - Name: BuildArtifact
+              Configuration:
+                ProjectName: CloudFormation_S3_VPC
+        - Name: Staging
+          Actions:
+            - Name: StagingAction
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              InputArtifacts:
+                - Name: BuildArtifact
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName: CloudFormation-S3-VPC-Pipeline
+                TemplatePath: BuildArtifact::outputtemplate.yml
+                Capabilities: CAPABILITY_IAM
+        - Name: Approval
+          Actions:
+            - Name: ManualApprovalAction
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: 1
+              InputArtifacts: []
+              OutputArtifacts: []
+        - Name: Production
+          Actions:
+            - Name: ProductionAction
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              InputArtifacts:
+                - Name: BuildArtifact
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName: CloudFormation-S3-VPC-Pipeline
+                TemplatePath: BuildArtifact::outputtemplate.yml
+                Capabilities: CAPABILITY_IAM
